@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{%block title %}{% end %}</title>
+    <meta name="description" content="Index Page">
+    <link rel="stylesheet" href="static/main.css">
+    {% block head %}{% end %}
+</head>
+<body>
+<nav>
+    <div>Hello {{user}}</div>
+    <a href="/logout">Logout</a>
+    <a href="/account">Account</a>
+</nav>
+<main>
+    {% block main %}{% end %}
+</main>
+{% block mainscript %}{% end %}
+</body>
+</html>

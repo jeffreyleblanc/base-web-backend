@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Sign Up</title>
+    <link rel="stylesheet" href="static/main.css">
+</head>
+<body>
+    <div>Sign Up!</div>
+
+    <div id="error" class='error'></div>
+
+    <form id="signup" action="/signup" method="post">
+        <div>
+            Invitation Code: <input type="text" name="invite">
+        </div>
+        <div>
+            Username: <input type="text" name="username">
+        </div>
+        <div>
+            Password: <input type="password" name="password1">
+        </div>
+        <div>
+            Password Again: <input type="password" name="password2">
+        </div>
+        <input type="submit" value="Sign Up">
+    </form>
+
+    <script type="module">
+        import {submit_form} from './static/common.js'
+        
+        const errorEl = document.getElementById('error');   
+        const signupEl = document.getElementById("signup");
+
+        signupEl.addEventListener("submit",async event=>{
+            try {
+                const resp = await submit_form(event);
+                window.location.replace(resp.next);
+            }catch(error){
+                if(error.got_resp){
+                    errorEl.innerText = error.message;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+{% extends "../base.html" %}
+
+{% block title %}Account{% end %}
+
+{% block main %}
+
+    {% if error != '' %}
+    <div class='error'>{{error}}</div>
+    {% end %}
+    <form id="password-change" action="/api/account/changepw" method="post">
+        <div>
+            Current Password: <input type="password" name="password">
+        </div>
+        <div>
+            New Password: <input type="password" name="npassword1">
+        </div>
+        <div>
+            New Password: <input type="password" name="npassword2">
+        </div>
+        <div id='error' class="error" hidden></div>
+        <div id='success' hidden></div>
+        <input type="submit" value="Change">
+    </form>
+
+{% end %}
+
+{% block mainscript %}
+<script type="module">
+    import {get_cookie} from './static/common.js'
+
+    const pw_change_el = document.getElementById("password-change");
+    const error_el = document.getElementById('error');
+    const success_el = document.getElementById('success');
+    pw_change_el.addEventListener("submit",submit_form);
+
+    async function submit_form(event) {
+        event.preventDefault();
+
+        const formEl = event.currentTarget;
+        const url = formEl.action;
+
+        try {
+            const data = new URLSearchParams();
+            for(const pair of new FormData(formEl)){
+                data.append(pair[0], pair[1]); }
+
+            const resp = await fetch(url,{
+                method: 'post',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-XSRFToken': get_cookie('_xsrf')
+                },
+                body: data
+            });
+
+            const resp_text = await resp.json();
+            if(resp.status==200){
+                console.log('Success!',resp_text);
+                error_el.hidden = true;
+                success_el.hidden = false;
+                success_el.innerText = 'Your password has been updated.';
+
+                Array.from(document.querySelectorAll('input[type=password]')).forEach(e=>{e.value=''})
+            }else{
+                console.log('Error!',resp.status,resp_text);
+                error_el.hidden = false;
+                error_el.innerText = resp_text.message;
+            }
+
+        } catch(error){
+            console.error(error);
+        }
+    }
+
+
+</script>
+{% end %}

@@ -1,0 +1,35 @@
+* {
+    padding: 0;
+    margin: 0;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-size: 12px;
+}
+
+nav {
+    display: flex;
+    flex-direction: row;
+    justify-content: left;
+    align-items: center;
+    background: #B0BEC5;
+    height: 2rem;
+    padding: 0rem 1rem;
+}
+
+nav > * {
+    /* All immediate children get margin, if smarter could do all but last */
+    margin-right: 1rem;
+}
+
+main {
+    padding: 1rem;
+}
+
+.error {
+    color: red;
+}
