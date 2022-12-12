@@ -149,10 +149,10 @@ class LogoutHandler(BaseHandler):
 
 def get_account_handlers():
     return [
-        (r"/login/?",LoginHandler),
-        (r"/logout/?",LogoutHandler),
-        (r"/account/?",AccountHandler),
-        (r"/welcome/?",WelcomeHandler),
-        (r"/api/account/changepw?",ChangePasswordHandler),
-        (r"/signup/?",SignupHandler)
+        (r"^/login/?$",LoginHandler),
+        (r"^/logout/?$",LogoutHandler),
+        (r"^/account/?$",AccountHandler),
+        (r"^/welcome/?$",WelcomeHandler),
+        (r"^/api/account/changepw?$",ChangePasswordHandler),
+        (r"^/signup/?$",SignupHandler)
     ]

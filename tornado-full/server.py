@@ -27,12 +27,8 @@ class MainHandler(BaseHandler):
     def get(self):
         self.render("index.html",user=self.current_user,rh=secrets.token_urlsafe(6))
 
-class FakeMainHandler(BaseHandler):
-    def get(self):
-        user = None
-        self.render("index.html",user=user)
 
-class UploadHandler(BaseHandler):
+class ExampleGetHandler(BaseHandler):
     @authenticated()
     def get(self):
         url = self.get_query_argument('url','')
@@ -45,7 +41,7 @@ class UploadHandler(BaseHandler):
             "selection": selection
         })
 
-class POSTUploadHandler(BaseHandler):
+class ExamplePostHandler(BaseHandler):
     @authenticated()
     def post(self):
         authh = self.request.headers.get("Authorization",None)
@@ -53,6 +49,21 @@ class POSTUploadHandler(BaseHandler):
         data = tornado.escape.json_decode(self.request.body)
         print('DATA!',data)
         self.write_json({'success':True})
+
+
+class ExampleUploadFile(BaseHandler):
+    @authenticated()
+    def post(self):
+        # see https://www.tornadoweb.org/en/stable/httputil.html#tornado.httputil.HTTPFile
+        fileinfo = self.request.files['myFile'][0]
+        filename = fileinfo['filename']
+        filedata = fileinfo['body']
+
+        with open(filename,'w+b') as f:
+            f.write(filedata)
+
+        self.write_json({'success':True})
+
 
 class EchoWebSocket(BaseWebsocketHandler):
     @authenticated()
@@ -90,18 +101,6 @@ class EchoWebSocket(BaseWebsocketHandler):
         self.application.unregister_ws_client(self.idx)
         print(f'WebSocket {self.idx} closed {self}')
 
-class UploadImage(BaseHandler):
-    @authenticated()
-    def post(self):
-        # see https://www.tornadoweb.org/en/stable/httputil.html#tornado.httputil.HTTPFile
-        fileinfo = self.request.files['myFile'][0]
-        filename = fileinfo['filename']
-        filedata = fileinfo['body']
-
-        with open(filename,'w+b') as f:
-            f.write(filedata)
-
-        self.write_json({'success':True})
 
 #-- Application ---------------------------------------------------------------#
 
@@ -121,14 +120,12 @@ class MyApp(tornado.web.Application, AuthServerMixin):
         self.ws_clients = {}
 
         # Handlers
-        #--> make a 'insert_auth_handlers' as an example
         self._handlers += [
-            (r"/", MainHandler),
-            (r"/fake/?", FakeMainHandler),
-            (r"/upload/?",UploadHandler),
-            (r"/upload-file/?",UploadImage),
-            (r"/ws/echo/?",EchoWebSocket),
-            (r"/upload-post/?",POSTUploadHandler)
+            (r"^/$", MainHandler),
+            (r"^/api/example/get/?$",ExampleGetHandler),
+            (r"^/api/example/post/?$",ExamplePostHandler),
+            (r"^/api/example/upload-file/?$",ExampleUploadFile),
+            (r"^/api/example/ws/echo/?$",EchoWebSocket)
         ]
         self._handlers += get_account_handlers()
 

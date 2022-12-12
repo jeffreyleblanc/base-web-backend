@@ -62,7 +62,7 @@ async function async_main(){
         const formData = new FormData();
         formData.append('myFile', files[0]);
 
-        fetch('/upload-file', {
+        fetch('/api/example/upload-file/', {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
@@ -83,7 +83,7 @@ async function async_main(){
     });
 
     // Make the websocket
-    const ws = client.make_websocket("ws://localhost:8888/ws/echo");
+    const ws = client.make_websocket("ws://localhost:8888/api/example/ws/echo/");
     ws.onopen = function() {
         ws.send("Hello, world");
     };
@@ -93,14 +93,15 @@ async function async_main(){
 
     // A basic GET call
     const get_resp = await client.get_json(
-        '/upload?url=yaks.com&title=YAK_SHAVER');
-    console.log('GET /upload response:',get_resp);
+        "/api/example/get/" + "?url=yaks.com&title=YAK_SHAVER"
+    );
+    console.log('Exmaple GET response:',get_resp);
 
     // A basic POST call
-    const post_obj = await client.post_json('/upload-post',{
+    const post_obj = await client.post_json("/api/example/post/",{
         a: 1, b:"Some text", c:false
     });
-    console.log("POST /upload-post returned object:",post_obj);
+    console.log("Example POST returned object:",post_obj);
 }
 
 async_main();
