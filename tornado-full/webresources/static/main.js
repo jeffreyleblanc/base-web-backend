@@ -38,8 +38,8 @@ const handleImageUpload = event => {
     });
 }
 
-
-const ws = new WebSocket("ws://localhost:8888/ws/echo");
+const proto_string = "_5QFrDCHm1c2WMzoDNgCWoRvuusomPZCVvd540XwtKM"
+const ws = new WebSocket("ws://localhost:8888/ws/echo",proto_string);
 ws.onopen = function() {
     ws.send("Hello, world");
 };

@@ -54,10 +54,19 @@ class EchoWebSocket(BaseWebsocketHandler):
         self.idx = None
         print('user???',self.current_user)
 
+        print('Protocols?',dir(self.request))
+        print('Headers',self.request.headers)
+
+        pro = self.request.headers.get("Sec-Websocket-Protocol",None)
+        print('PRO!',pro)
+
     def get(self, *args, **kwargs):
         print('ws get!')
         print('user2???',self.current_user)
         return super().get(*args,**kwargs)
+
+    def select_subprotocol(self, proto_list):
+        print('PROTOCOLS!!!',proto_list)
 
     def open(self):
         self.idx = self.application.register_ws_client(self)
