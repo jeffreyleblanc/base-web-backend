@@ -25,7 +25,7 @@ from system.auth_handlers import get_account_handlers, authenticated
 class MainHandler(BaseHandler):
     @authenticated(action='login')
     def get(self):
-        self.render("index.html",user=self.current_user)
+        self.render("index.html",user=self.current_user,rh=secrets.token_urlsafe(6))
 
 class FakeMainHandler(BaseHandler):
     def get(self):
