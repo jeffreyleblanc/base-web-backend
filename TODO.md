@@ -3,7 +3,7 @@
 tornado-full
 
 * [x] Remove the previous server.py file
-* [ ] Fix the http server / shutdown errors
+* [x] Fix the http server / shutdown errors
 * [x] Use pathlib
 * [ ] Break out files a bit more:
     * [ ] utils
