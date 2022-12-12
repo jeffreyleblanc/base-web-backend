@@ -10,16 +10,14 @@ import asyncio
 import signal
 import logging
 import json
-# Tools
-import bcrypt
 # Tornado
 import tornado.web
 import tornado.websocket
 import tornado.autoreload
 # Local
-from system.utils import as_bytes, as_string
 from system.basehandlers import BaseHandler, BaseWebsocketHandler
-from system.auth import get_account_handlers, authenticated
+from system.auth_server import AuthServerMixin
+from system.auth_handlers import get_account_handlers, authenticated
 
 
 #-- Application Handlers ------------------------------------------------------#
@@ -87,7 +85,7 @@ class UploadImage(BaseHandler):
 
 #-- Application ---------------------------------------------------------------#
 
-class MyApp(tornado.web.Application):
+class MyApp(tornado.web.Application, AuthServerMixin):
 
     def __init__(self, autoreload=False):
         self._handlers = []
@@ -97,17 +95,6 @@ class MyApp(tornado.web.Application):
         super().__init__(self._handlers,**self._settings)
 
     def initialize(self, autoreload=False):
-
-        # Example simple user map, don't do in real life!
-        self.user_map = {
-            'tester': b'tester',
-            'admin': b'admin'
-        }
-        for k in self.user_map.keys():
-            self.user_map[k] = bcrypt.hashpw(self.user_map[k],bcrypt.gensalt())
-
-        # invites
-        self.invites = [ 'apple', 'pancake']
 
         # Websocket tracking
         self.ws_client_idx = -1
@@ -150,6 +137,9 @@ class MyApp(tornado.web.Application):
         self.heartbeat_count = 0
         self.heartbeat = asyncio.create_task(self._call_heartbeat())
 
+        # Setup Auth
+        self.setup_auth()
+
 
     async def _call_heartbeat(self):
         while True:
@@ -163,57 +153,6 @@ class MyApp(tornado.web.Application):
         for handler in self.ws_clients.values():
             handler.close()
         logging.info('< app::on_shutdown')
-
-    #-- New Users ------------------------------------------------#
-
-    def has_invite(self, invite):
-        return invite in self.invites
-
-    def remove_invite(self, invite):
-        self.invites.remove(invite)
-
-    def has_username(self, username):
-        return username in self.user_map
-
-    async def create_user(self, username, password):
-        username = as_string(username)
-        password = as_bytes(password)
-        hpw = bcrypt.hashpw(password,bcrypt.gensalt()) # could run in executor
-        self.user_map[username] = hpw
-        logging.info('created user: %s', username)
-
-    #-- Current Users ------------------------------------------------#
-
-    def get_user_password_hash(self, username):
-        # raise Exception('Implement')
-        return self.user_map[username]
-
-    def set_user_password_hash(self, username, password_hash):
-        # raise Exception('Implement')
-        self.user_map[username] = password_hash
-
-    async def _validate_user_creds(self, username, password):
-        ''' Obviously update this to something better '''
-        username = as_string(username)
-        password = as_bytes(password)
-        try:
-            pwh = self.get_user_password_hash(username)
-            success = bcrypt.checkpw(password,pwh)
-            if not success:
-                logging.warning(f'Failed validation attempt for user: %s', username)
-            return success
-        except KeyError:
-            logging.warning(f'No user: %s', username)
-            return False
-
-    async def _update_user_creds(self, username, password):
-        if isinstance(username,bytes):
-            username = username.decode('utf-8')
-        if isinstance(password,str):
-            password = password.encode('utf-8')
-        hpw = bcrypt.hashpw(password,bcrypt.gensalt())
-        print(username,password,hpw)
-        self.set_user_password_hash(username,hpw)
 
     #-- Websocket Tracking ------------------------------------------------#
 
