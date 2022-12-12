@@ -3,6 +3,7 @@
 # Python
 import secrets
 import os
+from pathlib import Path
 import asyncio
 import signal
 import logging
@@ -269,13 +270,6 @@ class MyApp(tornado.web.Application):
 
     def initialize(self, autoreload=False):
 
-        if autoreload:
-            logging.info('Running autoreload on python source and template directory')
-
-        # # Heartbeat
-        # self.heartbeat = PeriodicCallback(self._call_heartbeat,5000,0.05)
-        # self.heartbeat.start()
-
         # Example simple user map, don't do in real life!
         self.user_map = {
             'tester': b'tester',
@@ -304,9 +298,9 @@ class MyApp(tornado.web.Application):
         self._handlers += get_account_handlers()
 
         # Get our paths
-        _here = os.path.dirname(__file__)
-        static_dir = os.path.join(_here,'webresources','static')
-        template_dir = os.path.join(_here,'webresources','templates')
+        _here = Path(__file__).parent
+        static_dir = _here/'webresources/static'
+        template_dir = _here/'webresources/templates'
 
         # Settings
         self._settings = dict(
@@ -320,6 +314,7 @@ class MyApp(tornado.web.Application):
         )
 
         if autoreload:
+            logging.info('Running autoreload on python source and template directory')
             for directory, _, files in os.walk(template_dir):
                 [tornado.autoreload.watch(f'{directory}/{f}') for f in files if not f.startswith('.')]
 
