@@ -43,6 +43,8 @@ class UploadHandler(BaseHandler):
 class POSTUploadHandler(BaseHandler):
     @authenticated()
     def post(self):
+        authh = self.request.headers.get("Authorization",None)
+        print('AUTH!!!',authh)
         data = tornado.escape.json_decode(self.request.body)
         print('DATA!',data)
         self.write_json({'status':'OK'})
@@ -67,6 +69,9 @@ class EchoWebSocket(BaseWebsocketHandler):
 
     def select_subprotocol(self, proto_list):
         print('PROTOCOLS!!!',proto_list)
+        if len(proto_list) == 1:
+            return proto_list[0]
+        return None
 
     def open(self):
         self.idx = self.application.register_ws_client(self)

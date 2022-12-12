@@ -38,7 +38,9 @@ const handleImageUpload = event => {
     });
 }
 
-const proto_string = "_5QFrDCHm1c2WMzoDNgCWoRvuusomPZCVvd540XwtKM"
+const session_secret = "_5QFrDCHm1c2WMzoDNgCWoRvuusomPZCVvd540XwtKM"
+
+const proto_string = `Bearer--${session_secret}`
 const ws = new WebSocket("ws://localhost:8888/ws/echo",proto_string);
 ws.onopen = function() {
     ws.send("Hello, world");
@@ -54,6 +56,7 @@ async function async_main(){
     const resp2 = await fetch('/upload-post', {
         method: 'POST',
         headers: {
+            'Authorization': `Bearer ${session_secret}`,
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'X-XSRFToken': getCookie('_xsrf')
