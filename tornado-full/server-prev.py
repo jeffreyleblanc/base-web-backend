@@ -13,9 +13,11 @@ from urllib.parse import urlencode
 # Tools
 import bcrypt
 # Tornado
+import tornado.ioloop
 import tornado.web
 import tornado.websocket
 import tornado.autoreload
+from tornado.ioloop import PeriodicCallback
 
 
 #-- Base Handlers --------------------------------------------------#
@@ -260,7 +262,8 @@ def as_string(val):
 
 class MyApp(tornado.web.Application):
 
-    def __init__(self, autoreload=False):
+    def __init__(self, ioloop, autoreload=False):
+        self.ioloop = ioloop
         self._handlers = []
         self._settings = {}
         self.initialize(autoreload=autoreload)
@@ -272,9 +275,9 @@ class MyApp(tornado.web.Application):
         if autoreload:
             logging.info('Running autoreload on python source and template directory')
 
-        # # Heartbeat
-        # self.heartbeat = PeriodicCallback(self._call_heartbeat,5000,0.05)
-        # self.heartbeat.start()
+        # Heartbeat
+        self.heartbeat = PeriodicCallback(self._call_heartbeat,5000,0.05)
+        self.heartbeat.start()
 
         # Example simple user map, don't do in real life!
         self.user_map = {
@@ -323,24 +326,13 @@ class MyApp(tornado.web.Application):
             for directory, _, files in os.walk(template_dir):
                 [tornado.autoreload.watch(f'{directory}/{f}') for f in files if not f.startswith('.')]
 
-        # Example value and heartbeat
-        self.heartbeat_count = 0
-        self.heartbeat = asyncio.create_task(self._call_heartbeat())
-
-
-    async def _call_heartbeat(self):
-        while True:
-            logging.info(f"heartbeat: {self.heartbeat_count}")
-            self.heartbeat_count += 1
-            await asyncio.sleep(1)
+    def _call_heartbeat(self):
+        logging.info('heartbeat')
 
     async def on_shutdown(self):
-        logging.info('app::on_shutdown >')
-        await asyncio.sleep(0.5)
-        self.heartbeat.cancel()
+        self.heartbeat.stop()
         for handler in self.ws_clients.values():
             handler.close()
-        logging.info('< app::on_shutdown')
 
     #-- New Users ------------------------------------------------#
 
@@ -413,7 +405,7 @@ class MyApp(tornado.web.Application):
 
 #-- Main -------------------------------------------------------------------------#
 
-async def main():
+def main():
     # Command line arguments
     import argparse
     parser = argparse.ArgumentParser()
@@ -426,39 +418,39 @@ async def main():
     access_log = logging.getLogger("tornado.access")
     access_log.setLevel(logging.WARNING)
 
+    # Get our ioloop
+    ioloop = tornado.ioloop.IOLoop.current()
+
     # Setup the server
-    tornado_app = MyApp(autoreload=args.autoreload)
+    tornado_app = MyApp(ioloop,autoreload=args.autoreload)
     http_server = tornado_app.listen(8888)
     logging.info('running at localhost:8888')
 
-    # Setup the shutdown systems
-    shutdown_trigger = asyncio.Event()
-    is_shutdown_triggered = False
-    async def exit_handler(signame):
-        nonlocal is_shutdown_triggered
-        if is_shutdown_triggered:
-            logging.info("already shutting down")
-        else:
-            is_shutdown_triggered = True
-            logging.info("shutdown start...")
-            try:
-                await http_server.on_shutdown()
-            except Exception as e:
-                logging.error(f"Error on shutdown: {e}")
-            logging.info("...shutdown complete")
-            shutdown_trigger.set()
+    # Setup shutdown methods
+    shutdown_triggered = False
+    async def shutdown():
+        nonlocal shutdown_triggered
+        if shutdown_triggered:
+            logging.info('duplicate shutdown call')
+            return
+        shutdown_triggered = True
+        logging.info('shutdown begun')
+        await tornado_app.on_shutdown()
+        http_server.stop()
+        await http_server.close_all_connections()
+        await asyncio.sleep(0.25)
+        tornado.ioloop.IOLoop.current().stop()
+        logging.info('shutdown complete')
 
-    # Setup signal handlers
-    loop = asyncio.get_event_loop()
-    for signame in ('SIGINT', 'SIGTERM'):
-        loop.add_signal_handler(
-            getattr(signal, signame),
-            lambda signame=signame: asyncio.create_task(exit_handler(signame))
-        )
+    def exit_handler(sig, frame):
+        tornado.ioloop.IOLoop.instance().add_callback_from_signal(shutdown)
 
-    # Block on the shutdown trigger
-    await shutdown_trigger.wait()
+    signal.signal(signal.SIGTERM,exit_handler)
+    signal.signal(signal.SIGINT,exit_handler)
+
+    # Start the system
+    ioloop.start()
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
