@@ -1,6 +1,6 @@
 # Todo
 
-tornado-full
+Sprint 1: Tornado-full
 
 * [x] Remove the previous server.py file
 * [x] Fix the http server / shutdown errors
@@ -9,4 +9,4 @@ tornado-full
     * [x] utils
     * [x] base handlers
     * [x] auth components
-* [ ] Clean up the javascript and css as stand now
+* [x] Clean up the javascript and css as stand now
