@@ -1,4 +1,4 @@
-
+/* Copyright 2022 Jeffrey LeBlanc */
 
 export function get_cookie(name){
     // Returns cookie or undefined

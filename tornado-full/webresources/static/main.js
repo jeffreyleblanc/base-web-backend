@@ -1,42 +1,42 @@
+/* Copyright 2022 Jeffrey LeBlanc */
+
 console.log('Hello!');
 
 // returns the cookie with the given name,
 // or undefined if not found
 function getCookie(name) {
-  let matches = document.cookie.match(new RegExp(
-    "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
-  ));
-  return matches ? decodeURIComponent(matches[1]) : undefined;
+    const matches = document.cookie.match(new RegExp(
+        "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
+    ));
+    return matches ? decodeURIComponent(matches[1]) : undefined;
 }
 
 
 document.querySelector('#fileUpload').addEventListener('change', event => {
-  handleImageUpload(event)
+    handleImageUpload(event)
 })
 
 const handleImageUpload = event => {
-  const files = event.target.files
-  const formData = new FormData()
-  formData.append('myFile', files[0])
+    const files = event.target.files
+    const formData = new FormData()
+    formData.append('myFile', files[0])
 
-  fetch('/upload-file', {
-    method: 'POST',
-    headers: {
+    fetch('/upload-file', {
+        method: 'POST',
+        headers: {
             'Accept': 'application/json',
             'X-XSRFToken': getCookie('_xsrf')
         },
-    body: formData
-  })
-  .then(response => response.json())
-  .then(data => {
-    console.log(data)
-  })
-  .catch(error => {
-    console.error(error)
-  })
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log(data)
+    })
+    .catch(error => {
+        console.error(error)
+    });
 }
-
-
 
 
 const ws = new WebSocket("ws://localhost:8888/ws/echo");
@@ -62,7 +62,6 @@ async function async_main(){
     });
     const jsonrep = await resp2.json();
     console.log(jsonrep);
-
 }
 
 async_main();
