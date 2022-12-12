@@ -331,7 +331,6 @@ class MyApp(tornado.web.Application):
 
     async def on_shutdown(self):
         logging.info('app::on_shutdown >')
-        await asyncio.sleep(0.5)
         self.heartbeat.cancel()
         for handler in self.ws_clients.values():
             handler.close()
@@ -423,7 +422,7 @@ async def main():
 
     # Setup the server
     tornado_app = MyApp(autoreload=args.autoreload)
-    http_server = tornado_app.listen(8888)
+    tornado_app.listen(8888)
     logging.info('running at localhost:8888')
 
     # Setup the shutdown systems
@@ -437,7 +436,7 @@ async def main():
             is_shutdown_triggered = True
             logging.info("shutdown start...")
             try:
-                await http_server.on_shutdown()
+                await tornado_app.on_shutdown()
             except Exception as e:
                 logging.error(f"Error on shutdown: {e}")
             logging.info("...shutdown complete")
