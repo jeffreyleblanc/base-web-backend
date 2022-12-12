@@ -9,11 +9,52 @@ function getCookie(name) {
     return matches ? decodeURIComponent(matches[1]) : undefined;
 }
 
+class InterfaceClient {
+
+    constructor(session_secret){
+        this.session_secret = session_secret;
+    }
+
+    make_websocket(url){
+        const proto_string = `Bearer--${this.session_secret}`
+        return new WebSocket(url,proto_string);
+    }
+
+    async get_json(url){
+        const resp = await window.fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${this.session_secret}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-XSRFToken': getCookie('_xsrf')
+            }
+        });
+        return await resp.json();
+    }
+
+    async post_json(url, obj){
+        const resp = await window.fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.session_secret}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-XSRFToken': getCookie('_xsrf')
+            },
+            body: JSON.stringify(obj)
+        });
+        return await resp.json();
+    }
+
+}
+
 async function async_main(){
     console.log("Start of main");
 
     // Our session secret
     const session_secret = "_5QFrDCHm1c2WMzoDNgCWoRvuusomPZCVvd540XwtKM";
+    const client = new InterfaceClient(session_secret);
 
     // Setup the Image Upload
     const handleImageUpload = event => {
@@ -42,8 +83,7 @@ async function async_main(){
     });
 
     // Make the websocket
-    const proto_string = `Bearer--${session_secret}`
-    const ws = new WebSocket("ws://localhost:8888/ws/echo",proto_string);
+    const ws = client.make_websocket("ws://localhost:8888/ws/echo");
     ws.onopen = function() {
         ws.send("Hello, world");
     };
@@ -52,21 +92,14 @@ async function async_main(){
     };
 
     // A basic GET call
-    const get_resp = await fetch('/upload?url=yaks.com&title=YAK_SHAVER');
+    const get_resp = await client.get_json(
+        '/upload?url=yaks.com&title=YAK_SHAVER');
     console.log('GET /upload response:',get_resp);
 
     // A basic POST call
-    const post_resp = await fetch('/upload-post', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${session_secret}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'X-XSRFToken': getCookie('_xsrf')
-        },
-        body: JSON.stringify({a: 1, b: 'Some text'})
+    const post_obj = await client.post_json('/upload-post',{
+        a: 1, b:"Some text", c:false
     });
-    const post_obj = await post_resp.json();
     console.log("POST /upload-post returned object:",post_obj);
 }
 

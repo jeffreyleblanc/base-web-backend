@@ -38,7 +38,12 @@ class UploadHandler(BaseHandler):
         url = self.get_query_argument('url','')
         title = self.get_query_argument('title','')
         selection = self.get_query_argument('selection','')
-        self.write(f'uploaded: {url} {title} {selection}')
+        self.write_json({
+            "success": True,
+            "url": url,
+            "title": title,
+            "selection": selection
+        })
 
 class POSTUploadHandler(BaseHandler):
     @authenticated()
@@ -47,7 +52,7 @@ class POSTUploadHandler(BaseHandler):
         print('AUTH!!!',authh)
         data = tornado.escape.json_decode(self.request.body)
         print('DATA!',data)
-        self.write_json({'status':'OK'})
+        self.write_json({'success':True})
 
 class EchoWebSocket(BaseWebsocketHandler):
     @authenticated()
