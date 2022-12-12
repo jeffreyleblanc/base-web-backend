@@ -76,6 +76,7 @@ class EchoWebSocket(BaseWebsocketHandler):
     def open(self):
         self.idx = self.application.register_ws_client(self)
         print(f'WebSocket {self.idx} on_open')
+        self.write_message("HELLO FROM THE SERVER!!!")
 
     def on_message(self, message):
         self.write_message(u"You said: " + message)
