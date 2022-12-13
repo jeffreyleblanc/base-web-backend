@@ -21,16 +21,26 @@ class SpoolClient:
         self.name = name
         self.url = url
         self.conn = None
+        self.locally_closed = False
 
     async def connect(self):
         if self.conn is not None:
             raise Exception("Already connected")
 
+        self.conn = None
+        try_to_connect = True
         attemps_to_go = 5
-        while True:
+        while try_to_connect:
             try:
-                request = HTTPRequest(url=self.url)
-                self.conn = await websocket_connect(url=request,on_message_callback=self.on_message)
+                # https://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPRequest
+                # Note request vs connect timeouts
+                request = HTTPRequest(url=self.url,request_timeout=5)
+                self.conn = await websocket_connect(
+                    url=request, on_message_callback=self.on_message )
+                try_to_connect = False
+                self.locally_closed = False
+                break
+
             except HTTPClientError as err:
                 print("err!",err)
                 self.conn = None
@@ -38,21 +48,40 @@ class SpoolClient:
                 print('refused!!!!',err)
                 self.conn = None
             finally:
-                attemps_to_go -= 1
-
-            if attemps_to_go > 0:
-                print("waiting to try connecting again")
-                await asyncio.sleep(1)
-            else:
-                raise Exception("Could not connect")
+                if try_to_connect:
+                    attemps_to_go -= 1
+                    if attemps_to_go > 0:
+                        print("waiting to try connecting again")
+                        await asyncio.sleep(1)
+                    else:
+                        raise Exception("Could not connect")
+        print('done connect')
 
     def close(self):
         if self.conn is not None:
             self.conn.close()
             self.conn = None
+            self.locally_closed = True
+
+    def on_closed(self):
+        if not self.locally_closed:
+            print("TRY TO RECONNECT!!!")
+            self.conn.close() # ??????
+            self.conn = None
+            # We should probably save this task somehow???
+            asyncio.create_task(self.connect(),name="Reconn")
+            """
+            the above doesn't work, and it sort of makes sense
+            instead we should put an asyncio.Event() that the connect
+            loop blocks on, and clear that here to retrigger the reconnect
+            attempts?
+            """
 
     def on_message(self, message):
-        print("  ==>",message)
+        if message is None:
+            self.on_closed()
+        else:
+            print("  ==>",message)
 
     def write_something(self):
         if self.conn is None:
@@ -69,7 +98,8 @@ async def main():
 
     # Make our client and await it connecting
     client = SpoolClient(name,url)
-    await client.connect()
+    # await client.connect() # OR?
+    asyncio.create_task(client.connect(),name="First conn")
 
     # Define a periodic message
     async def send_something():

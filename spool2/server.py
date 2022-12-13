@@ -12,10 +12,19 @@ import random
 
 class ChannelWebSocket(tornado.websocket.WebSocketHandler):
 
-    def prepare(self):
-        raise tornado.web.HTTPError(403)
+    '''
+    https://www.tornadoweb.org/en/stable/websocket.html
+    '''
+
+    async def prepare(self):
+        if random.random() > 0.9:
+            raise tornado.web.HTTPError(403)
+        await asyncio.sleep(1)
 
     def open(self):
+        print("hold up")
+        # await asyncio.sleep(2)
+        print("ok go")
         self.idx = self.application.register_ws_client(self)
         print(f'WebSocket {self.idx} on_open')
         self.write_message("HELLO FROM THE SERVER!")
