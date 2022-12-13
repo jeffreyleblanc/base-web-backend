@@ -75,6 +75,10 @@ class SpoolClient:
                     raise Exception("Could not connect")
         print('done connect')
 
+    '''
+    def reconnect()...
+    '''
+
     def close(self):
         if self.conn is not None:
             print("closing")
@@ -99,17 +103,35 @@ class SpoolClient:
 
     #-- Await System -----------------------------------------------------------------------------#
 
-    """
-    Alternatively here we could do the:
+    async def connect2(self):
+        # Should be called only once
 
-        conn = await websocket_connect(url)
-        while True:
-            msg = await conn.read_message()
-            if msg is None: break
-            # Do something with msg
+        try:
+            print("Attempt a connection")
+            request = HTTPRequest(url=self.url,request_timeout=5)
+            self.conn = await websocket_connect(url=request)
+            print("connected")
+            while True:
+                msg = await self.conn.read_message()
+                if msg is None:
+                    break
+                self.on_message2(msg)
+            print("closed")
 
-    pattern which might make the reconnect logic clearer
-    """
+        except HTTPClientError as err:
+            print("err!",err)
+            self.conn = None
+        except ConnectionRefusedError as err:
+            print('refused!!!!',err)
+            self.conn = None
+        finally:
+            print("finally")
+
+        print("completed")
+
+    def on_message2(self, message):
+        print("  ==>",message)
+
 
     #-- Write ------------------------------------------------------------------------------------#
 
@@ -128,8 +150,15 @@ async def main():
 
     # Make our client and await it connecting
     client = SpoolClient(name,url)
-    # await client.connect() # OR?
-    asyncio.create_task(client.connect(),name="First conn")
+
+    # Ways of connecting
+    conn_meth = 3
+    if 1 == conn_meth:
+        await client.connect()
+    if 2 == conn_meth:
+        asyncio.create_task(client.connect(),name="First conn")
+    if 3 == conn_meth:
+        asyncio.create_task(client.connect2(),name="First conn")
 
     # Define a periodic message
     async def send_something():
