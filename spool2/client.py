@@ -26,15 +26,25 @@ class SpoolClient:
         if self.conn is not None:
             raise Exception("Already connected")
 
-        try:
-            request = HTTPRequest(url=self.url)
-            self.conn = await websocket_connect(url=request,on_message_callback=self.on_message)
-        except HTTPClientError as err:
-            print("err!",err)
-            self.conn = None
-        except ConnectionRefusedError as err:
-            print('refused!!!!',err)
-            self.conn = None
+        attemps_to_go = 5
+        while True:
+            try:
+                request = HTTPRequest(url=self.url)
+                self.conn = await websocket_connect(url=request,on_message_callback=self.on_message)
+            except HTTPClientError as err:
+                print("err!",err)
+                self.conn = None
+            except ConnectionRefusedError as err:
+                print('refused!!!!',err)
+                self.conn = None
+            finally:
+                attemps_to_go -= 1
+
+            if attemps_to_go > 0:
+                print("waiting to try connecting again")
+                await asyncio.sleep(1)
+            else:
+                raise Exception("Could not connect")
 
     def close(self):
         if self.conn is not None:
