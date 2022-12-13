@@ -12,7 +12,12 @@ from tornado.websocket import websocket_connect
 from tornado.httpclient import HTTPRequest, HTTPClientError
 
 '''
+Notes:
+
 https://www.tornadoweb.org/en/stable/websocket.html#tornado.websocket.WebSocketClientConnection
+https://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPRequest
+* Note request vs connect timeouts
+
 '''
 
 class SpoolClient:
@@ -21,41 +26,33 @@ class SpoolClient:
         self.name = name
         self.url = url
         self.conn = None
-        self.locally_closed = False
 
+        # Connection management
+        self.locally_closed = False
         self.conn_retrigger = None
+
+
+    #-- Callback Based System -----------------------------------------------------------------#
 
     async def connect(self):
         if self.conn is not None:
             raise Exception("Already connected")
 
-        self.conn = None
-        try_to_connect = True
-        attemps_to_go = 5
-        while try_to_connect:
+        remaining_connection_attempts = 5
+        while True:
             try:
-                # https://www.tornadoweb.org/en/stable/httpclient.html#tornado.httpclient.HTTPRequest
-                # Note request vs connect timeouts
+                # Make our connection
                 request = HTTPRequest(url=self.url,request_timeout=5)
                 self.conn = await websocket_connect(
                     url=request, on_message_callback=self.on_message )
-                try_to_connect = False
+
+                # Await to keep open: triggered by `on_close`
                 self.locally_closed = False
                 self.conn_retrigger = asyncio.Event()
                 await self.conn_retrigger.wait()
-                try_to_connect = True
-                attemps_to_go = 5
-                """
-                Alternatively here we could do the:
 
-                    conn = await websocket_connect(url)
-                    while True:
-                        msg = await conn.read_message()
-                        if msg is None: break
-                        # Do something with msg
-
-                pattern which might make the reconnect logic clearer
-                """
+                # Reengage reconnection attemps
+                remaining_connection_attempts = 5
 
             except HTTPClientError as err:
                 print("err!",err)
@@ -64,41 +61,48 @@ class SpoolClient:
                 print('refused!!!!',err)
                 self.conn = None
             finally:
-                if try_to_connect:
-                    attemps_to_go -= 1
-                    if attemps_to_go > 0:
-                        print("waiting to try connecting again")
-                        await asyncio.sleep(1)
-                    else:
-                        raise Exception("Could not connect")
+                remaining_connection_attempts -= 1
+                if remaining_connection_attempts > 0:
+                    print("waiting to try connecting again")
+                    await asyncio.sleep(1)
+                else:
+                    raise Exception("Could not connect")
         print('done connect')
 
     def close(self):
         if self.conn is not None:
+            self.locally_closed = True
             self.conn.close()
             self.conn = None
-            self.locally_closed = True
 
     def on_closed(self):
         if not self.locally_closed:
-            print("TRY TO RECONNECT!!!")
-            self.conn.close() # ??????
+            print("on_closed: Try to reconnect")
+            self.conn.close() # Needed?
             self.conn = None
-            # We should probably save this task somehow???
-            ### asyncio.create_task(self.connect(),name="Reconn")
             self.conn_retrigger.set()
-            """
-            the above doesn't work, and it sort of makes sense
-            instead we should put an asyncio.Event() that the connect
-            loop blocks on, and clear that here to retrigger the reconnect
-            attempts?
-            """
 
     def on_message(self, message):
         if message is None:
             self.on_closed()
         else:
             print("  ==>",message)
+
+    #-- Await System -----------------------------------------------------------------------------#
+
+    """
+    Alternatively here we could do the:
+
+        conn = await websocket_connect(url)
+        while True:
+            msg = await conn.read_message()
+            if msg is None: break
+            # Do something with msg
+
+    pattern which might make the reconnect logic clearer
+    """
+
+    #-- Write ------------------------------------------------------------------------------------#
 
     def write_something(self):
         if self.conn is None:
