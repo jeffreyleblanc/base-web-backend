@@ -44,10 +44,10 @@ class ExampleGetHandler(BaseHandler):
 class ExamplePostHandler(BaseHandler):
     @authenticated()
     def post(self):
-        authh = self.request.headers.get("Authorization",None)
-        print('AUTH!!!',authh)
+        authorization = self.request.headers.get("Authorization",None)
+        print(f"auth:",authorization)
         data = tornado.escape.json_decode(self.request.body)
-        print('DATA!',data)
+        print('data:',data)
         self.write_json({'success':True})
 
 
@@ -66,33 +66,41 @@ class ExampleUploadFile(BaseHandler):
 
 
 class EchoWebSocket(BaseWebsocketHandler):
+
+    '''
+    The sequence of calls on a new connection is:
+    1. prepare
+    2. get
+    3. select_subprotocol
+    4. open
+    '''
+
     @authenticated()
     def prepare(self):
-        print('ws prepare!!!!')
+        logging.info("ws:prepare =>")
         self.idx = None
-        print('user???',self.current_user)
-
-        print('Protocols?',dir(self.request))
-        print('Headers',self.request.headers)
-
-        pro = self.request.headers.get("Sec-Websocket-Protocol",None)
-        print('PRO!',pro)
+        print('current user:',self.current_user)
+        ws_protocol = self.request.headers.get("Sec-Websocket-Protocol",None)
+        print('ws_protocol:',ws_protocol)
+        logging.info("<= ws:prepare")
 
     def get(self, *args, **kwargs):
-        print('ws get!')
-        print('user2???',self.current_user)
+        logging.info("ws:get =>")
+        logging.info("<= ws:get")
         return super().get(*args,**kwargs)
 
     def select_subprotocol(self, proto_list):
-        print('PROTOCOLS!!!',proto_list)
+        logging.info("ws:select_subprotocol =>")
         if len(proto_list) == 1:
             return proto_list[0]
         return None
 
     def open(self):
+        logging.info("ws:open =>")
         self.idx = self.application.register_ws_client(self)
         print(f'WebSocket {self.idx} on_open')
-        self.write_message("HELLO FROM THE SERVER!!!")
+        self.write_message("HELLO FROM THE SERVER!")
+        logging.info("<= ws:open")
 
     def on_message(self, message):
         self.write_message(u"You said: " + message)
@@ -162,7 +170,7 @@ class MyApp(tornado.web.Application, AuthServerMixin):
         while True:
             logging.info(f"heartbeat: {self.heartbeat_count}")
             self.heartbeat_count += 1
-            await asyncio.sleep(1)
+            await asyncio.sleep(10)
 
     async def on_shutdown(self):
         logging.info('app::on_shutdown >')
