@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 # Copyright Jeffrey LeBlanc, 2022. MIT License.
 
 import asyncio
@@ -15,8 +17,7 @@ class ChannelWebSocket(tornado.websocket.WebSocketHandler):
         self.write_message("HELLO FROM THE SERVER!")
 
     def on_message(self, message):
-        self.write_message(u"You said: " + message)
-        self.application.announce(message)
+        self.application.announce(self,message)
 
     def on_close(self):
         self.application.unregister_ws_client(self.idx)
@@ -43,8 +44,11 @@ class MyApp(tornado.web.Application):
             handler.close()
         logging.info('< app::on_shutdown')
 
-    def announce(self, message):
+    def announce(self, sender, message):
+        sender.write_message(f"ECHO: {message}")
         for wc in self.ws_clients.values():
+            if wc == sender:
+                continue
             wc.write_message(message)
 
     #-- Websocket Tracking ------------------------------------------------#

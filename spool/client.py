@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 # Copyright 2022 Jeffrey LeBlanc
 
 import asyncio
@@ -5,25 +7,32 @@ import signal
 import logging
 import datetime
 import secrets
+import random
 import tornado.websocket
 
-
-def clbk(message):
-    print('received', message)
+'''
+https://www.tornadoweb.org/en/stable/websocket.html#tornado.websocket.WebSocketClientConnection
+'''
 
 async def main():
-
+    # Set a custom name
     name = secrets.token_urlsafe(6)
 
+    def on_message(message):
+        print("  =>",message)
+
     url = 'ws://localhost:8898/api/ws/channel/'
-    conn = await tornado.websocket.websocket_connect(url,on_message_callback=clbk)
+    conn = await tornado.websocket.websocket_connect(url,on_message_callback=on_message)
 
-    async def heartbeat2():
+    async def send_something():
         while True:
-            conn.write_message(f"{name} {datetime.datetime.now()}")
-            await asyncio.sleep(1)
+            msg = f"{name} {datetime.datetime.now()}"
+            print("<=",msg)
+            conn.write_message(msg)
+            sleep_for = 2+4*random.random()
+            await asyncio.sleep(sleep_for)
 
-    asyncio.create_task(heartbeat2())
+    asyncio.create_task(send_something())
 
     # Setup the shutdown systems
     shutdown_trigger = asyncio.Event()
