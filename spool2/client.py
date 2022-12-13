@@ -23,6 +23,8 @@ class SpoolClient:
         self.conn = None
         self.locally_closed = False
 
+        self.conn_retrigger = None
+
     async def connect(self):
         if self.conn is not None:
             raise Exception("Already connected")
@@ -39,7 +41,21 @@ class SpoolClient:
                     url=request, on_message_callback=self.on_message )
                 try_to_connect = False
                 self.locally_closed = False
-                break
+                self.conn_retrigger = asyncio.Event()
+                await self.conn_retrigger.wait()
+                try_to_connect = True
+                attemps_to_go = 5
+                """
+                Alternatively here we could do the:
+
+                    conn = await websocket_connect(url)
+                    while True:
+                        msg = await conn.read_message()
+                        if msg is None: break
+                        # Do something with msg
+
+                pattern which might make the reconnect logic clearer
+                """
 
             except HTTPClientError as err:
                 print("err!",err)
@@ -69,7 +85,8 @@ class SpoolClient:
             self.conn.close() # ??????
             self.conn = None
             # We should probably save this task somehow???
-            asyncio.create_task(self.connect(),name="Reconn")
+            ### asyncio.create_task(self.connect(),name="Reconn")
+            self.conn_retrigger.set()
             """
             the above doesn't work, and it sort of makes sense
             instead we should put an asyncio.Event() that the connect
