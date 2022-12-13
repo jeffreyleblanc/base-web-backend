@@ -41,6 +41,7 @@ class SpoolClient:
         remaining_connection_attempts = 5
         while True:
             try:
+                print("Attempt a connection")
                 # Make our connection
                 request = HTTPRequest(url=self.url,request_timeout=5)
                 self.conn = await websocket_connect(
@@ -49,9 +50,11 @@ class SpoolClient:
                 # Await to keep open: triggered by `on_close`
                 self.locally_closed = False
                 self.conn_retrigger = asyncio.Event()
+                print("Connected")
                 await self.conn_retrigger.wait()
 
                 # Reengage reconnection attemps
+                print("Connection is lost")
                 remaining_connection_attempts = 5
 
             except HTTPClientError as err:
@@ -61,6 +64,9 @@ class SpoolClient:
                 print('refused!!!!',err)
                 self.conn = None
             finally:
+                print("Finally")
+                if self.locally_closed:
+                    return
                 remaining_connection_attempts -= 1
                 if remaining_connection_attempts > 0:
                     print("waiting to try connecting again")
@@ -71,12 +77,15 @@ class SpoolClient:
 
     def close(self):
         if self.conn is not None:
+            print("closing")
             self.locally_closed = True
             self.conn.close()
             self.conn = None
 
     def on_closed(self):
-        if not self.locally_closed:
+        if self.locally_closed:
+            print("on_closed: local close")
+        else:
             print("on_closed: Try to reconnect")
             self.conn.close() # Needed?
             self.conn = None
