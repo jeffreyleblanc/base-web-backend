@@ -106,26 +106,31 @@ class SpoolClient:
     async def connect2(self):
         # Should be called only once
 
-        try:
-            print("Attempt a connection")
-            request = HTTPRequest(url=self.url,request_timeout=5)
-            self.conn = await websocket_connect(url=request)
-            print("connected")
-            while True:
-                msg = await self.conn.read_message()
-                if msg is None:
-                    break
-                self.on_message2(msg)
-            print("closed")
+        while True:
+            try:
+                print("Attempt a connection")
+                request = HTTPRequest(url=self.url,request_timeout=5)
+                self.conn = await websocket_connect(url=request)
+                print("connected")
+                while True:
+                    msg = await self.conn.read_message()
+                    if msg is None:
+                        break
+                    self.on_message2(msg)
+                print("closed")
 
-        except HTTPClientError as err:
-            print("err!",err)
-            self.conn = None
-        except ConnectionRefusedError as err:
-            print('refused!!!!',err)
-            self.conn = None
-        finally:
-            print("finally")
+            except HTTPClientError as err:
+                print("err!",err)
+                self.conn = None
+            except ConnectionRefusedError as err:
+                print('refused!!!!',err)
+                self.conn = None
+            finally:
+                self.conn = None
+                print("finally")
+
+            print("Wait to try connecting again")
+            await asyncio.sleep(1)
 
         print("completed")
 
@@ -161,12 +166,13 @@ async def main():
         asyncio.create_task(client.connect2(),name="First conn")
 
     # Define a periodic message
+    # Note this can hang
     async def send_something():
         while True:
             client.write_something()
             sleep_for = 2+4*random.random()
             await asyncio.sleep(sleep_for)
-    asyncio.create_task(send_something())
+    asyncio.create_task(send_something(),name="Send Something")
 
     # Setup the shutdown systems
     shutdown_trigger = asyncio.Event()
