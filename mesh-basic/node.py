@@ -18,21 +18,16 @@ from tornado.httpclient import HTTPRequest, HTTPClientError
 class MeshLeafConnectionHandler(tornado.websocket.WebSocketHandler):
 
     def prepare(self):
-        self.addr = self.request.get_query_argument("port",None)
+        pass
 
     def open(self):
-        self.kind = self.request.path
         self.wc_uuid = self.application.register_leaf_client(self)
 
     def on_message(self, message):
         self.application.on_leaf_client_msg(self,message)
 
     def on_close(self):
-        self.application.unregister_leaf_client(
-            self.kind,
-            self.wc_uuid,
-            self.addr
-        )
+        self.application.unregister_leaf_client(self.wc_uuid)
         print(f'WebSocket Leaf {self.wc_uuid} closed {self}')
 
 
@@ -67,7 +62,7 @@ class MeshNodeConnectionClient:
     def on_message(self, msg):
         self.master.on_ws_client_msg(self.name,msg)
 
-    def send_msg(self, msg):
+    def write_message(self, msg):
         if self.conn is None: return
         self.conn.write_message(msg)
 
@@ -78,19 +73,14 @@ class MeshNodeConnectionHandler(tornado.websocket.WebSocketHandler):
         self.addr = self.request.get_query_argument("port",None)
 
     def open(self):
-        self.kind = self.request.path
-        self.wc_uuid = self.application.register_node_client(self)
+        self.application.register_node_client(self,self.addr)
 
     def on_message(self, message):
         self.application.on_node_client_msg(self,message)
 
     def on_close(self):
-        self.application.unregister_node_client(
-            self.kind,
-            self.wc_uuid,
-            self.addr
-        )
-        print(f'Node Client {self.wc_uuid} closed {self}')
+        self.application.unregister_node_client(self.addr)
+        print(f'Node Client {self.addr} closed {self}')
 
 #-- Control Plane Handlers ----------------------------------------#
 
@@ -136,13 +126,13 @@ class MeshNodeServer(tornado.web.Application):
         for wc in self.leaf_clients.values():
             if wc == sender: continue
             wc.write_message(message)
-        for cn in self.node_connections:
+        for cn in self.node_connections.values():
             if isinstance(cn,NodeConnectorClient):
                 cn.write_message(message)
             if isinstance(cn,NodeWebSocketHandler):
                 cn.write_message(message)
 
-    def unregister_leaf_client(self, kind, wc_uuid, addr):
+    def unregister_leaf_client(self, wc_uuid):
         logging.info('unregister %s wsclient', wc_uuid)
         self.leaf_clients.pop(wc_uuid,None)
 
@@ -158,17 +148,14 @@ class MeshNodeServer(tornado.web.Application):
         }
     #-- Node Client (Handler) Tracking ------------------------------------------------#
 
-    def register_node_client(self, handler):
-        wc_uuid = uuid.uuid4()
-        addr = handler.addr
+    def register_node_client(self, addr, handler):
         self.node_connections[addr] = handler
-        return wc_uuid
 
     def on_node_client_msg(self, sender, message):
         for wc in self.leaf_clients.values():
             wc.write_message(message)
 
-    def unregister_node_client(self, kind, wc_uuid, addr):
-        logging.info('unregister %s wsclient', wc_uuid)
+    def unregister_node_client(self, addr):
+        logging.info('unregister %s wsclient', addr)
         self.node_connections.pop(addr,None)
 
