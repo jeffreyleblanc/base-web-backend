@@ -1,21 +1,16 @@
 # Copyright 2022 Jeffrey LeBlanc
 
+# Python
 import asyncio
 import signal
 import logging
 import datetime
 import secrets
-import random
 import uuid
+# Tornado
+import tornado.web
 from tornado.websocket import websocket_connect
 from tornado.httpclient import HTTPRequest, HTTPClientError
-import asyncio
-import datetime
-import signal
-import logging
-import tornado.web
-import tornado.websocket
-import random
 
 
 class MeshLeafClient:
@@ -132,8 +127,20 @@ class NodeServer(tornado.web.Application):
             self.node_connections[addr] = handler
         return wc_uuid
 
-    def on_ws_client_msg(self, handler, message):
-        pass
+    def on_ws_client_msg(self, sender, message):
+        if "client" in sender.kind:
+            sender.write_message(f"ECHO: {message}")
+            for wc in self.local_clients.values():
+                if wc == sender: continue
+                wc.write_message(message)
+            for cn in self.node_connections:
+                if isinstance(cn,NodeConnectorClient):
+                    cn.write_message(message)
+                if isinstance(cn,NodeWebSocketHandler):
+                    cn.write_message(message)
+        if "node" in sender.kind:
+            for wc in self.local_clients.values():
+                wc.write_message(message)
 
     def unregister_ws_client(self, kind, wc_uuid, addr):
         logging.info('unregister %s wsclient', wc_uuid)
