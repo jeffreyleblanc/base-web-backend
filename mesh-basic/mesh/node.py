@@ -115,7 +115,7 @@ class MeshNodeServer(tornado.web.Application):
         super().__init__(_handlers)
 
     def start(self):
-        self.listen(8888)
+        self.listen(self.port)
 
     async def on_shutdown(self):
         for handler in self.ws_clients.values():
@@ -145,10 +145,11 @@ class MeshNodeServer(tornado.web.Application):
 
     #-- Node Connector API ------------------------------------------------#
 
-    def launch_node_client_connection(self, port):
+    def connect_to(self, port):
+        name = f"node:{port}"
         url = f"ws://localhost:{port}/api/ws/node/"
-        connector = MeshNodeConnectionClient(name,url)
-        connector_task = asyncio.create_task(connector.connect(),name="client")
+        connector = MeshNodeConnectionClient(self,name,url)
+        connector_task = asyncio.create_task(connector.start(),name="client")
         self.node_connections_by_addr[name] = {
             "conn": connector,
             "task": connector_task
