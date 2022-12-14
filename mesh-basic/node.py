@@ -94,21 +94,28 @@ class ControlActionHandler(tornado.web.RequestHandler):
 
 class MeshNodeServer(tornado.web.Application):
 
-    def __init__(self):
+    def __init__(self, port):
+        # Attributes
+        self.port = port
 
+        # Connection tracking
+        self.leaf_clients_by_uuid = {}
+        self.node_connections_by_addr = {
+            # "fqdn1": NodeClient,
+            # "fqdn2": NodeWebSocketHandler
+        }
+
+        # Handlers
         _handlers = [
             (r"^/api/ws/leaf/?$",MeshLeafConnectionHandler),
             (r"^/api/ws/node/?$",MeshNodeConnectionHandler),
             (r"^/api/http/control/action/?$",ControlActionHandler)
         ]
 
-        self.leaf_clients = {}
-        self.node_connections = {
-            # "fqdn1": NodeClient,
-            # "fqdn2": NodeWebSocketHandler
-        }
-
         super().__init__(_handlers)
+
+    def start(self):
+        self.listen(8888)
 
     async def on_shutdown(self):
         for handler in self.ws_clients.values():
@@ -118,15 +125,15 @@ class MeshNodeServer(tornado.web.Application):
 
     def register_leaf_client(self, handler):
         wc_uuid = uuid.uuid4()
-        self.leaf_clients[wc_uuid] = handler
+        self.leaf_clients_by_uuid[wc_uuid] = handler
         return wc_uuid
 
     def on_leaf_client_msg(self, sender, message):
         sender.write_message(f"ECHO: {message}")
-        for wc in self.leaf_clients.values():
+        for wc in self.leaf_clients_by_uuid.values():
             if wc == sender: continue
             wc.write_message(message)
-        for cn in self.node_connections.values():
+        for cn in self.node_connections_by_addr.values():
             if isinstance(cn,NodeConnectorClient):
                 cn.write_message(message)
             if isinstance(cn,NodeWebSocketHandler):
@@ -134,7 +141,7 @@ class MeshNodeServer(tornado.web.Application):
 
     def unregister_leaf_client(self, wc_uuid):
         logging.info('unregister %s wsclient', wc_uuid)
-        self.leaf_clients.pop(wc_uuid,None)
+        self.leaf_clients_by_uuid.pop(wc_uuid,None)
 
     #-- Node Connector API ------------------------------------------------#
 
@@ -142,20 +149,20 @@ class MeshNodeServer(tornado.web.Application):
         url = f"ws://localhost:{port}/api/ws/node/"
         connector = MeshNodeConnectionClient(name,url)
         connector_task = asyncio.create_task(connector.connect(),name="client")
-        self.node_connections[name] = {
+        self.node_connections_by_addr[name] = {
             "conn": connector,
             "task": connector_task
         }
     #-- Node Client (Handler) Tracking ------------------------------------------------#
 
     def register_node_client(self, addr, handler):
-        self.node_connections[addr] = handler
+        self.node_connections_by_addr[addr] = handler
 
     def on_node_client_msg(self, sender, message):
-        for wc in self.leaf_clients.values():
+        for wc in self.leaf_clients_by_uuid.values():
             wc.write_message(message)
 
     def unregister_node_client(self, addr):
         logging.info('unregister %s wsclient', addr)
-        self.node_connections.pop(addr,None)
+        self.node_connections_by_addr.pop(addr,None)
 
