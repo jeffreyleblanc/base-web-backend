@@ -18,42 +18,15 @@ import tornado.websocket
 import random
 
 
-'''
-Node(A)
-    server:
-        websocket-/api/local/
-            websocket-client <=>
-        websocket-/api/node/
-            websocket-node-client [A.wc1] <=> [B.nc1]
-    node-clients:
-        node-client [A.nc1] <=> [C.wc1]
-Node(B)
-    server:
-        websocket-/api/local/
-            websocket-client <=>
-        websocket-/api/node/
-            websocket-node-client [B.wc1] <=> [C.nc1]
-    node-clients:
-        node-client [B.nc1 <=> [A.wc1]
-Node(C)
-    server:
-        websocket-/api/local/
-            websocket-client <=>
-        websocket-/api/node/
-            websocket-node-client [C.wc1] <=> [A.nc1]
-    node-clients:
-        node-client [C.nc1] <=> [B.wc1]
-'''
+class MeshLeafClient:
+    pass
 
-
-class NodeClient:
+class NodeConnectorClient:
 
     def __init__(self, name, url):
         self.name = name
         self.url = url
         self.conn = None
-
-    #-- Await System -----------------------------------------------------------------------------#
 
     async def start(self):
         while True:
@@ -84,6 +57,9 @@ class NodeClient:
 
 class NodeWebSocketHandler(tornado.websocket.WebSocketHandler):
 
+    def prepare(self):
+        self.addr = self.request.get_query_argument("port",None)
+
     def open(self):
         self.kind = self.request.path
         self.wc_uuid = self.application.register_ws_client(self)
@@ -92,7 +68,11 @@ class NodeWebSocketHandler(tornado.websocket.WebSocketHandler):
         self.application.on_ws_client_msg(self,message)
 
     def on_close(self):
-        self.application.unregister_ws_client(self.wc_uuid)
+        self.application.unregister_ws_client(
+            self.kind,
+            self.wc_uuid,
+            self.addr
+        )
         print(f'WebSocket {self.wc_uuid} closed {self}')
 
 
@@ -104,8 +84,6 @@ class DemoActionHandler(tornado.web.RequestHandler):
 class NodeServer(tornado.web.Application):
 
     def __init__(self):
-        # Websocket tracking
-        self.ws_clients = {}
 
         _handlers = [
             (r"^/api/ws/client/?$",ClientWebSocketHandler),
@@ -113,6 +91,7 @@ class NodeServer(tornado.web.Application):
             (r"^/api/http/demo/action/?$",DemoActionHandler)
         ]
 
+        self.local_clients = {}
         self.node_connections = {
             # "fqdn1": NodeClient,
             # "fqdn2": NodeWebSocketHandler
@@ -131,29 +110,35 @@ class NodeServer(tornado.web.Application):
                 continue
             wc.write_message(message)
 
-    async def eject_cycle(self):
-        while True:
-            if len(self.ws_clients) > 0 and random.random()>0.75:
-                pass
+    #-- Node Connector API ------------------------------------------------#
+
+    def launch_client_connection(self, port):
+        url = f"ws://localhost:{port}/api/ws/node/"
+        connector = NodeConnectorClient(name,url)
+        connector_task = asyncio.create_task(connector.connect(),name="client")
+        self.node_connections[name] = {
+            "conn": connector,
+            "task": connector_task
+        }
 
     #-- Websocket Tracking ------------------------------------------------#
 
     def register_ws_client(self, handler):
         wc_uuid = uuid.uuid4()
-        self.ws_clients[wc_uuid] = handler
-        logging.info('register %s wsclient', wc_uuid)
+        if "client" in handler.path:
+            self.local_clients[wc_uuid] = handler
+        if "node" in handler.path:
+            addr = handler.addr
+            self.node_connections[addr] = handler
         return wc_uuid
 
     def on_ws_client_msg(self, handler, message):
         pass
 
-    def unregister_ws_client(self, wc_uuid):
+    def unregister_ws_client(self, kind, wc_uuid, addr):
         logging.info('unregister %s wsclient', wc_uuid)
-        self.ws_clients.pop(wc_uuid)
-
-    def launch_client_connection(self, name):
-        client = NodeClient(name,url)
-        client_task = asyncio.create_task(client.connect(),name="client")
-        self._client_registry[name] = tuple(client,client_task)
-
+        if "client" in kind:
+            self.local_clients.pop(wc_uuid,None)
+        if "node" in kind:
+            self.node_connections.pop(addr,None)
 
