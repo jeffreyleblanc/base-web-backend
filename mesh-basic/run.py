@@ -2,7 +2,18 @@
 
 import asyncio
 import signal
+import json
 from mesh.node import MeshNodeServer
+
+async def async_sleep(seconds):
+    print(f"sleeping for {seconds}...")
+    await asyncio.sleep(seconds)
+
+def dump_statuses(server_list):
+    print("\n-- statuses----------------------------")
+    for server in server_list:
+        print(json.dumps(server.dump_status(),indent=4))
+    print("------------------------------\n")
 
 async def main():
 
@@ -10,6 +21,7 @@ async def main():
     server1 = MeshNodeServer(port=8701)
     server2 = MeshNodeServer(port=8702)
     server3 = MeshNodeServer(port=8703)
+    server_list = [server1,server2,server3]
 
     # start them up
     server1.start()
@@ -17,14 +29,22 @@ async def main():
     server3.start()
 
     # Pause
-    await asyncio.sleep(1)
+    await async_sleep(1)
+    dump_statuses(server_list)
 
     # connect some of them
     server1.connect_to(8702)
-    await asyncio.sleep(1)
+    await async_sleep(1)
     server2.connect_to(8703)
-    await asyncio.sleep(1)
+    await async_sleep(1)
     server3.connect_to(8701)
+
+    # Pause
+    await async_sleep(4)
+    dump_statuses(server_list)
+
+
+    print("Finished Run")
 
     # Setup the shutdown systems
     shutdown_trigger = asyncio.Event()

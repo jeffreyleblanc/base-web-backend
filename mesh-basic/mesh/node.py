@@ -77,7 +77,7 @@ class MeshNodeConnectionHandler(tornado.websocket.WebSocketHandler):
         print("From:",self.addr)
 
     def open(self):
-        self.application.register_node_client(self,self.addr)
+        self.application.register_node_client(self.addr,self)
 
     def on_message(self, message):
         self.application.on_node_client_msg(self,message)
@@ -127,6 +127,16 @@ class MeshNodeServer(tornado.web.Application):
 
     def debug(self, *args):
         print(f"{self.port} =>",*args)
+
+    #-- Status ------------------------------------------------#
+
+    def dump_status(self):
+        status = dict(self=str(self.port), leaf=[], node={})
+        for leaf in self.leaf_clients_by_uuid.values():
+            status["leaf"].append("client")
+        for addr,conn in self.node_connections_by_addr.items():
+            status["node"][str(addr)] = str(type(conn))
+        return status
 
     #-- Leaf Tracking ------------------------------------------------#
 
