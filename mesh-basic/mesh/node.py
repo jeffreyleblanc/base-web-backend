@@ -45,7 +45,8 @@ class MeshNodeConnectionClient:
         while True:
             try:
                 request = HTTPRequest(url=self.url,request_timeout=5)
-                print("connected")
+                self.conn = await websocket_connect(url=request)
+                print(self.name,"connected to",self.url)
                 while True:
                     msg = await self.conn.read_message()
                     if msg is None: break
@@ -58,6 +59,7 @@ class MeshNodeConnectionClient:
                 self.conn = None
 
             await asyncio.sleep(1)
+        print("not connected anymore")
 
     def on_message(self, msg):
         self.master.on_ws_client_msg(self.name,msg)
@@ -70,7 +72,9 @@ class MeshNodeConnectionClient:
 class MeshNodeConnectionHandler(tornado.websocket.WebSocketHandler):
 
     def prepare(self):
-        self.addr = self.request.get_query_argument("port",None)
+        print("Prepare!!!")
+        self.addr = self.get_argument("from_addr",None)
+        print("From:",self.addr)
 
     def open(self):
         self.application.register_node_client(self,self.addr)
@@ -121,6 +125,9 @@ class MeshNodeServer(tornado.web.Application):
         for handler in self.ws_clients.values():
             handler.close()
 
+    def debug(self, *args):
+        print(f"{self.port} =>",*args)
+
     #-- Leaf Tracking ------------------------------------------------#
 
     def register_leaf_client(self, handler):
@@ -146,8 +153,9 @@ class MeshNodeServer(tornado.web.Application):
     #-- Node Connector API ------------------------------------------------#
 
     def connect_to(self, port):
+        self.debug("connecting to node:",port)
         name = f"node:{port}"
-        url = f"ws://localhost:{port}/api/ws/node/"
+        url = f"ws://localhost:{port}/api/ws/node/?from_addr={self.port}"
         connector = MeshNodeConnectionClient(self,name,url)
         connector_task = asyncio.create_task(connector.start(),name="client")
         self.node_connections_by_addr[name] = {
@@ -158,6 +166,7 @@ class MeshNodeServer(tornado.web.Application):
 
     def register_node_client(self, addr, handler):
         self.node_connections_by_addr[addr] = handler
+        self.debug("connected to node:",addr)
 
     def on_node_client_msg(self, sender, message):
         for wc in self.leaf_clients_by_uuid.values():
