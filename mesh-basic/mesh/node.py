@@ -179,6 +179,12 @@ class MeshNodeServer(tornado.web.Application):
 
     #-- Node Connector API ------------------------------------------------#
 
+    '''
+    connection could be two part:
+    * http call where we get a key and decide who initiates
+    * then ws with the key as part of the protocol
+    '''
+
     def connect_to(self, port):
         '''
         Call to connect to another node.
