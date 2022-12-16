@@ -24,7 +24,8 @@ class MeshLeafClient:
         while True:
             try:
                 request = HTTPRequest(url=self.url,request_timeout=5)
-                print("connected")
+                self.conn = await websocket_connect(url=request)
+                print(f"leaf {self.name} connected")
                 while True:
                     msg = await self.conn.read_message()
                     if msg is None: break
@@ -39,7 +40,8 @@ class MeshLeafClient:
             await asyncio.sleep(1)
 
     def on_message(self, msg):
-        self.master.on_message(self.name,msg)
+        print(f"leaf {self.name} recv:",msg)
+        ## self.master.on_message(self.name,msg)
 
     def send_msg(self, msg):
         if self.conn is None: return

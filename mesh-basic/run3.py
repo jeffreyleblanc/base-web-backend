@@ -23,11 +23,13 @@ async def main():
     # Make a series of servers
     server1 = MeshNodeServer(port=8701)
     server2 = MeshNodeServer(port=8702)
-    server_list = [server1,server2]
+    server3 = MeshNodeServer(port=8703)
+    server_list = [server1,server2,server3]
 
     # start them up
     server1.start()
     server2.start()
+    server3.start()
 
     # Pause
     await async_sleep(1)
@@ -38,6 +40,9 @@ async def main():
     asyncio.create_task(client1.start(),name="c1")
     client2 = MeshLeafClient('c2',f"ws://localhost:{server2.port}/api/ws/leaf/")
     asyncio.create_task(client2.start(),name="c2")
+    client3 = MeshLeafClient('c3',f"ws://localhost:{server3.port}/api/ws/leaf/")
+    asyncio.create_task(client3.start(),name="c3")
+    client_list = [client1,client2,client3]
 
     # Pause
     await async_sleep(1)
@@ -45,6 +50,10 @@ async def main():
 
     # connect some of them
     server1.connect_to(8702) # 1 : 2
+    await async_sleep(1)
+    server2.connect_to(8703) # 2 : 3
+    await async_sleep(1)
+    server3.connect_to(8701) # 3 : 1
 
     # Pause
     await async_sleep(2)
@@ -56,16 +65,10 @@ async def main():
     client1.send_msg("CLIENT 1 BROADCAST!")
     await async_sleep(2)
 
-    print("\n---------------------------\n")
+    print("---------------------------")
 
     print("client2 Send a second message")
     client2.send_msg("CLIENT 2 BROADCAST!")
-    await async_sleep(5)
-
-    print("\n---------------------------\n")
-
-    print("client2 Send a second message")
-    client2.send_msg("CLIENT 2 BROADCAST AGAIN!")
     await async_sleep(5)
 
     print("Finished Run")

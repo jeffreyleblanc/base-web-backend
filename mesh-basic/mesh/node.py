@@ -22,8 +22,10 @@ class MeshLeafConnectionHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):
         self.wc_uuid = self.application.register_leaf_client(self)
+        self.write_message("welcome")
 
     def on_message(self, message):
+        print("MeshLeafConnectionHandler:on_message",message)
         self.application.on_leaf_client_msg(self,message)
 
     def on_close(self):
@@ -49,8 +51,16 @@ class MeshNodeConnectionClient:
                 print(self.name,"connected to",self.url)
                 while True:
                     msg = await self.conn.read_message()
-                    if msg is None: break
-                    self.on_message(msg)
+                    print("GOT A MESSAGE!!!!!",msg)
+                    if msg is None:
+                        break
+                    print("DO SOMETHING WITH IT:::")
+                    print(self.on_incoming_message)
+                    self.master.on_ws_client_msg(self.name,msg)
+                    # Needs to inject into a queue
+                    print('?????')
+                    ### self.on_incoming_message(msg)
+                    print("WTF")
             except HTTPClientError as err:
                 self.conn = None
             except ConnectionRefusedError as err:
@@ -58,10 +68,13 @@ class MeshNodeConnectionClient:
             finally:
                 self.conn = None
 
+            print("EXITED")
+
             await asyncio.sleep(1)
         print("not connected anymore")
 
-    def on_message(self, msg):
+    def on_incoming_message(self, msg):
+        print("MeshNodeConnectionClient:on_message".msg)
         self.master.on_ws_client_msg(self.name,msg)
 
     def write_message(self, msg):
@@ -151,9 +164,12 @@ class MeshNodeServer(tornado.web.Application):
             if wc == sender: continue
             wc.write_message(message)
         for cn in self.node_connections_by_addr.values():
-            if isinstance(cn,NodeConnectorClient):
-                cn.write_message(message)
-            if isinstance(cn,NodeWebSocketHandler):
+            print("SEND OUT TO:",cn)
+            if isinstance(cn,dict): # MeshNodeConnectionHandler):
+                print("SEND A")
+                cn["conn"].write_message(message)
+            if isinstance(cn,MeshNodeConnectionHandler):
+                print("SEND B")
                 cn.write_message(message)
 
     def unregister_leaf_client(self, wc_uuid):
@@ -165,13 +181,17 @@ class MeshNodeServer(tornado.web.Application):
     def connect_to(self, port):
         self.debug("connecting to node:",port)
         name = f"node:{port}"
-        url = f"ws://localhost:{port}/api/ws/node/?from_addr={self.port}"
-        connector = MeshNodeConnectionClient(self,name,url)
-        connector_task = asyncio.create_task(connector.start(),name="client")
-        self.node_connections_by_addr[name] = {
-            "conn": connector,
-            "task": connector_task
-        }
+        if name in self.node_connections_by_addr:
+            print(f"{self.port} already has {name}")
+        else:
+            url = f"ws://localhost:{port}/api/ws/node/?from_addr={self.port}"
+            connector = MeshNodeConnectionClient(self,name,url)
+            connector_task = asyncio.create_task(connector.start(),name="client")
+            self.node_connections_by_addr[str(port)] = {
+                "conn": connector,
+                "task": connector_task
+            }
+
     #-- Node Client (Handler) Tracking ------------------------------------------------#
 
     def register_node_client(self, addr, handler):
@@ -179,8 +199,15 @@ class MeshNodeServer(tornado.web.Application):
         self.debug("connected to node:",addr)
 
     def on_node_client_msg(self, sender, message):
+        print("on_node_client_msg",sender,message)
         for wc in self.leaf_clients_by_uuid.values():
             wc.write_message(message)
+
+    def on_ws_client_msg(self, sender, message):
+        print("on_ws_client_msg",sender,message)
+        for wc in self.leaf_clients_by_uuid.values():
+            wc.write_message(message)
+        print("====> exit!")
 
     def unregister_node_client(self, addr):
         logging.info('unregister %s wsclient', addr)
