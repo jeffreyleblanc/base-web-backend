@@ -6,12 +6,8 @@ import json
 import logging
 from mesh.node import MeshNodeServer
 from mesh.leaf import MeshLeafClient
+from testutils.context import TestContext
 
-
-async def async_sleep(seconds):
-    print(f"sleeping for {seconds}...")
-    await asyncio.sleep(seconds)
-    print("...done sleeping")
 
 def dump_statuses(server_list):
     print("\n-- statuses----------------------------")
@@ -21,58 +17,57 @@ def dump_statuses(server_list):
 
 async def main():
 
+    ctx = TestContext()
+
     # Setup logging
     logging.basicConfig(level=logging.INFO,format='%(message)s',)
 
-    # Make a series of servers
+    ctx.H2("Make a series of servers")
     server1 = MeshNodeServer(port=8701)
     server2 = MeshNodeServer(port=8702)
     server_list = [server1,server2]
 
-    # start them up
+    ctx.H2("start them up")
     server1.start()
     server2.start()
 
-    # Pause
-    await async_sleep(1)
+    ctx.H2("Pause")
+    await ctx.async_sleep(1)
     dump_statuses(server_list)
 
-    # Make a client for each
+    ctx.H2("Make a client for each")
     client1 = MeshLeafClient('c1',f"ws://localhost:{server1.port}/api/ws/leaf/")
     asyncio.create_task(client1.start(),name="c1")
     client2 = MeshLeafClient('c2',f"ws://localhost:{server2.port}/api/ws/leaf/")
     asyncio.create_task(client2.start(),name="c2")
 
-    # Pause
-    await async_sleep(1)
+    ctx.H2("Pause")
+    await ctx.async_sleep(1)
     dump_statuses(server_list)
 
-    # connect some of them
+    ctx.H2("connect some of them")
     server1.connect_to(8702) # 1 : 2
 
-    # Pause
-    await async_sleep(2)
+    ctx.H2("Pause")
+    await ctx.async_sleep(2)
     dump_statuses(server_list)
 
-    # Pause
-    await async_sleep(2)
+    ctx.H2("Pause")
+    await ctx.async_sleep(2)
     print("client1 Send a message")
     client1.send_msg("CLIENT 1 BROADCAST!")
-    await async_sleep(2)
+    await ctx.async_sleep(2)
 
-    print("\n---------------------------\n")
 
-    print("client2 Send a second message")
+    ctx.H2("client2 Send a second message")
     client2.send_msg("CLIENT 2 BROADCAST!")
-    await async_sleep(5)
+    await ctx.async_sleep(5)
 
-    print("\n---------------------------\n")
-
-    print("client2 Send a second message")
+    ctx.H2("client2 Send a second message")
     client2.send_msg("CLIENT 2 BROADCAST AGAIN!")
-    await async_sleep(5)
+    await ctx.async_sleep(5)
 
-    print("Finished Run")
+    ctx.H2("Finished Run")
 
     # Setup the shutdown systems
     shutdown_trigger = asyncio.Event()
