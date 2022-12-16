@@ -3,6 +3,7 @@
 import asyncio
 import signal
 import json
+import logging
 from mesh.node import MeshNodeServer
 from mesh.leaf import MeshLeafClient
 
@@ -19,6 +20,9 @@ def dump_statuses(server_list):
     print("------------------------------\n")
 
 async def main():
+
+    # Setup logging
+    logging.basicConfig(level=logging.INFO,format='%(message)s',)
 
     # Make a series of servers
     server1 = MeshNodeServer(port=8701)
