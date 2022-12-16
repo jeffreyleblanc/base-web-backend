@@ -74,6 +74,15 @@ class MeshNodeConnectionClient:
         if self.conn is None: return
         self.conn.write_message(msg)
 
+class MeshNodeConnectionOutgoing:
+
+    def __init__(self, conn, conn_task):
+        self.conn = conn
+        self.conn_task = conn_task
+
+    def write_message(self, message):
+        self.conn.write_message(message)
+
 
 class MeshNodeConnectionHandler(tornado.websocket.WebSocketHandler):
 
@@ -103,8 +112,9 @@ class ControlActionHandler(tornado.web.RequestHandler):
 
 class MeshNodeServer(tornado.web.Application):
 
-    def __init__(self, port):
+    def __init__(self, hostname, port):
         # Attributes
+        self.hostname = hostname
         self.port = port
 
         # Connection tracking
@@ -158,8 +168,8 @@ class MeshNodeServer(tornado.web.Application):
 
         # Push to the other connected nodes
         for cn in self.node_connections_by_addr.values():
-            if isinstance(cn,dict):
-                cn["conn"].write_message(message)
+            if isinstance(cn,MeshNodeConnectionOutgoing):
+                cn.write_message(message)
             if isinstance(cn,MeshNodeConnectionHandler):
                 cn.write_message(message)
 
@@ -183,10 +193,9 @@ class MeshNodeServer(tornado.web.Application):
             url = f"ws://localhost:{port}/api/ws/node/?from_addr={self.port}"
             connector = MeshNodeConnectionClient(self,name,url)
             connector_task = asyncio.create_task(connector.start(),name="client")
-            self.node_connections_by_addr[str(port)] = {
-                "conn": connector,
-                "task": connector_task
-            }
+            self.node_connections_by_addr[str(port)] = MeshNodeConnectionOutgoing(
+                conn= connector, conn_task= connector_task
+            )
 
     def disconnect_from(self, port):
         pass

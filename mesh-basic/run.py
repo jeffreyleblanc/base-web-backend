@@ -23,8 +23,8 @@ async def main():
     logging.basicConfig(level=logging.INFO,format='%(message)s',)
 
     ctx.H2("Make a series of servers")
-    server1 = MeshNodeServer(port=8701)
-    server2 = MeshNodeServer(port=8702)
+    server1 = MeshNodeServer("localhost",port=8701)
+    server2 = MeshNodeServer("localhost",port=8702)
     server_list = [server1,server2]
 
     ctx.H2("start them up")
