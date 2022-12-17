@@ -22,49 +22,54 @@ async def main():
     # Setup logging
     logging.basicConfig(level=logging.INFO,format='%(message)s',)
 
+    # Setup
+    ports = [8701, 8702]
+    servers = []
+    clients = []
+
     ctx.H2("Make a series of servers")
-    server1 = MeshNodeServer("localhost",port=8701)
-    server2 = MeshNodeServer("localhost",port=8702)
-    server_list = [server1,server2]
+    for port in ports:
+        servers.append(MeshNodeServer("localhost",port=port))
 
     ctx.H2("start them up")
-    server1.start()
-    server2.start()
+    for server in servers:
+        server.start()
 
     ctx.H2("Pause")
     await ctx.async_sleep(1)
-    dump_statuses(server_list)
+    dump_statuses(servers)
 
     ctx.H2("Make a client for each")
-    client1 = MeshLeafClient('c1',f"ws://localhost:{server1.port}/api/ws/leaf/")
-    asyncio.create_task(client1.start(),name="c1")
-    client2 = MeshLeafClient('c2',f"ws://localhost:{server2.port}/api/ws/leaf/")
-    asyncio.create_task(client2.start(),name="c2")
+    for i,port in enumerate(ports):
+        name = f"c{i}"
+        url = f"ws://localhost:{port}/api/ws/leaf/"
+        client = MeshLeafClient(name,url)
+        asyncio.create_task(client.start(),name=name)
+        clients.append(client)
 
     ctx.H2("Pause")
     await ctx.async_sleep(1)
-    dump_statuses(server_list)
+    dump_statuses(servers)
 
     ctx.H2("connect some of them")
-    server1.connect_to(8702) # 1 : 2
+    servers[0].connect_to(8702)
 
     ctx.H2("Pause")
     await ctx.async_sleep(2)
-    dump_statuses(server_list)
+    dump_statuses(servers)
 
     ctx.H2("Pause")
     await ctx.async_sleep(2)
-    print("client1 Send a message")
-    client1.send_msg("CLIENT 1 BROADCAST!")
+    print("client[0] Send a message")
+    clients[0].send_msg("CLIENT[0] BROADCAST!")
     await ctx.async_sleep(2)
 
-
-    ctx.H2("client2 Send a second message")
-    client2.send_msg("CLIENT 2 BROADCAST!")
+    ctx.H2("client[1] Send a second message")
+    clients[1].send_msg("CLIENT[1] BROADCAST!")
     await ctx.async_sleep(5)
 
     ctx.H2("client2 Send a second message")
-    client2.send_msg("CLIENT 2 BROADCAST AGAIN!")
+    clients[1].send_msg("CLIENT[1] BROADCAST AGAIN!")
     await ctx.async_sleep(5)
 
     ctx.H2("Finished Run")
