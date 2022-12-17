@@ -1,14 +1,32 @@
 # Todo
 
+Sprint 4:
+
+* [ ] Make sure that the clients can be stopped/shut down easily
+    * [ ] They should know their state as well
+* [ ] Implement a client with basic future like capability
+* [ ] Upgrade the mesh clients with the above
+* [ ] Make sure the task tracking is sane and easy to manage/cleanup
+
+Sprint 5:
+
+* [ ] More modern node fqdn mappings / names etc
+* [ ] Make a better node connection protocol/handshake
+
+
+---
+
+Sprint 3:
+
+* [x] Initial mesh sketch
 
 Sprint 2:
 
-* [ ] Clean up tornado-full python a bit
-    * [ ] Better endpoint names
-    * [ ] comments where needed (for example on ws subprotocol)
-    * [ ] Clean up random print statements
-* [ ] Make basic tornado asyncio websocket client
-
+* [x] Clean up tornado-full python a bit
+    * [x] Better endpoint names
+    * [x] comments where needed (for example on ws subprotocol)
+    * [x] Clean up random print statements
+* [x] Make basic tornado asyncio websocket client
 
 Sprint 1: Tornado-full
 
