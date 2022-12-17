@@ -25,7 +25,7 @@ class MeshLeafConnectionHandler(tornado.websocket.WebSocketHandler):
         self.write_message("welcome")
 
     def on_message(self, message):
-        print("MeshLeafConnectionHandler:on_message",message)
+        # print("MeshLeafConnectionHandler:on_message",message)
         self.application.on_leaf_client_msg(self,message)
 
     def on_close(self):
@@ -215,12 +215,12 @@ class MeshNodeServer(tornado.web.Application):
         self.node_connections_by_addr.pop(addr,None)
 
     def on_node_client_msg(self, sender, message):
-        print("on_node_client_msg",sender,message)
+        # print("on_node_client_msg",sender,message)
         for wc in self.leaf_clients_by_uuid.values():
             wc.write_message(message)
 
     def on_ws_client_msg(self, sender, message):
-        print("on_ws_client_msg",sender,message)
+        # print("on_ws_client_msg",sender,message)
         for wc in self.leaf_clients_by_uuid.values():
             wc.write_message(message)
 

@@ -40,10 +40,10 @@ class MeshLeafClient:
             await asyncio.sleep(1)
 
     def on_message(self, msg):
-        print(f"leaf {self.name} recv:",msg)
-        ## self.master.on_message(self.name,msg)
+        print(f"leaf[{self.name}] recv:",msg)
 
     def send_msg(self, msg):
         if self.conn is None: return
+        print(f"leaf[{self.name}] send:",msg)
         self.conn.write_message(msg)
 

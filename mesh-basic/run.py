@@ -23,7 +23,7 @@ async def main():
     logging.basicConfig(level=logging.INFO,format='%(message)s',)
 
     # Setup
-    ports = [8701, 8702]
+    ports = [8701, 8702, 8703]
     servers = []
     clients = []
 
@@ -53,6 +53,8 @@ async def main():
 
     ctx.H2("connect some of them")
     servers[0].connect_to(8702)
+    servers[1].connect_to(8703)
+    servers[2].connect_to(8701)
 
     ctx.H2("Pause")
     await ctx.async_sleep(2)
@@ -60,7 +62,8 @@ async def main():
 
     ctx.H2("Pause")
     await ctx.async_sleep(2)
-    print("client[0] Send a message")
+
+    ctx.H2("client[0] Send a message")
     clients[0].send_msg("CLIENT[0] BROADCAST!")
     await ctx.async_sleep(2)
 
