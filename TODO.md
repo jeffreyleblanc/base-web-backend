@@ -1,5 +1,10 @@
 # Todo
 
+Sprint 4a:
+
+* [ ] rename to `base-web-backend`
+* [ ] bring in raw python http examples
+
 Sprint 4:
 
 * [ ] Make sure that the clients can be stopped/shut down easily
